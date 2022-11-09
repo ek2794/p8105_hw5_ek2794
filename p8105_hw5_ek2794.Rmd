@@ -10,11 +10,11 @@ library(dplyr)
 library(readr)
 library(readxl)
 library(stringr)
+library(broom)
 ```
 
 
-
- Data for each participant is included in a separate file, and file names include the subject ID and arm.
+Data for each participant is included in a separate file, and file names include the subject ID and arm.
 
 Create a tidy dataframe containing data from all participants, including the subject ID, arm, and observations over time:
 
@@ -57,50 +57,61 @@ crimes_unsolved_categories = crimes_df %>%
   
 unsolved_sum = 
   rowSums(crimes_unsolved_categories[,c("Closed without arrest", "Open/No arrest")], na.rm = TRUE) 
-  
 
-crimes_unsolved_total = cbind(crimes_totalcrimes, unsolved_sum) %>%
+crimes_unsolved_total = cbind(crimes_totalcrimes, unsolved_sum) 
 crimes_unsolved = crimes_unsolved_total[, c(1, 3, 2)]
   
+baltimore = crimes_unsolved[3, ]
 ```
 
 ## Here we downloaded the dataset from Github. We created a separated city_state variable to identify each individual city, which led us to 51 unique cities. The homicides are divided into Closed by arrest which are the closed cases and the unsolved_sum which are the sum of "Closed without arrest" or "Open/No arrest". n_obs represents the total number of homicides observed in the city_state. ##
 
+For the city of Baltimore, MD, use the prop.test function to estimate the proportion of homicides that are unsolved; save the output of prop.test as an R object, apply the broom::tidy to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe
 
 
-For the city of Baltimore, MD, use the prop.test function to estimate the proportion of homicides that are unsolved; save the output of prop.test as an R object, apply the broom::tidy to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe.
+```{r}
+proptest = function(unsolved_sum, n_obs) {
+
+    prop.test(unsolved_sum, n_obs, p = 0.5, alternative = "two.sided") %>%
+    broom::tidy() %>%
+    select(estimate, conf.low, conf.high)
+  
+}
 
 
-##ERROR IN PROP.TEST##
+```
+
 
 ```{r}
 
-proptest function(x) {
+proptest(pull(baltimore, unsolved_sum), pull(baltimore, n_obs))
 
-  estimate = prop.test()
+crimes_unsolved %>%
+  mutate(
+  
+)
+
+original dataset %>%
+nest %>%
+mutate %>% function within
+##use nest, unnest for entire Df
+output = map(list_norms, estimate, conf_low, conf_high)
+
+output = vector("list")
+
+for (i in 1:51) {
+  output[[i]] = proptest(
+    pull(crimes_unsolved, unsolved_sum),
+    pull(crimes_unsolved, n_obs)
 }
 
-baltimore_df = crimes_all[3,] %>%
-  janitor::clean_names() %>%
-prop.test(
-    x = "unsolved_sum",
-    n = "n_obs",
-    p = NULL,
-    alternative = c("two.sided","less","greater"),
-    conf.level = 0.95, correct = TRUE)
-  
+output = map(crimes_unsolved, proptest)
+
 ```
 
 ```{r}
-prop_and_ci = function(x) {
 
-  if (!is.numeric(x)) {
-    stop("Argument x should be numeric")
-  }
-
-  prop_and_ci = proptest(x)
-
-}
+```
 
 ```
 
@@ -121,7 +132,8 @@ Fix σ=5
 Set μ=0. Generate 5000 datasets from the model
 
 ```{r}
-sim_mean_sd = function(n, mu = 0, sigma = 5) {
+sim_mean_sd = function(n = 30, mu = 0, sigma = 5) {
+
 
   sim_data = tibble(
   x = rnorm(n, mean = mu, sd = sigma),
@@ -130,8 +142,13 @@ sim_mean_sd = function(n, mu = 0, sigma = 5) {
   sim_data %>%
     summarize(
       mu_hat = mean(x),
-      sigma_hat = sd(x)
+      sigma_hat = sd(x),
+      pvalue = t.test(x, y = NULL,
+                       alternative = c("two.sided"),
+                       mu = 0, paired = FALSE, var.equal = FALSE,
+                       conf.level = 0.95)
 )
+}
 
 output = vector("list", 5000)
 
