@@ -34,7 +34,6 @@ scale_fill_discrete = scale_fill_viridis_d
 
 ```
 
-Describe the raw data. Create a city_state variable (e.g. “Baltimore, MD”) and then summarize within cities to obtain the total number of homicides and the number of unsolved homicides (those for which the disposition is “Closed without arrest” or “Open/No arrest”).
 
 ```{r}
 website = ("https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv")
@@ -68,9 +67,10 @@ baltimore = crimes_unsolved %>%
 
 ```
 
-## Here we downloaded the dataset from Github. We created a separated city_state variable to identify each individual city, which led us to 51 unique cities. The homicides are divided into Closed by arrest which are the closed cases and the unsolved_sum which are the sum of "Closed without arrest" or "Open/No arrest". n_obs represents the total number of homicides observed in the city_state. ##
+## Here I downloaded the dataset from Github. I created a separated city_state variable to identify each individual city, which led us to 51 unique cities. The homicides are divided into Closed by arrest which are the closed cases and the unsolved_sum which are the sum of "Closed without arrest" or "Open/No arrest". n_obs represents the total number of homicides observed in the city_state.
 
-For the city of Baltimore, MD, use the prop.test function to estimate the proportion of homicides that are unsolved; save the output of prop.test as an R object, apply the broom::tidy to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe
+To test out the prop.test function, I created a separate baltimore function by filtering out just Baltimore from the crimes_unsolved dataset.##
+
 
 
 ```{r}
@@ -83,10 +83,10 @@ proptest = function(unsolved_sum, n_obs) {
 }
 
 ```
+##Here I created a function for proptest where x = the # of unsolved crimes and n = total number of homicides. I used the 'broom::tidy' function to create a workable tibble and selected the estimate, low, and high confidence interval. I created the proptest into a function in order to be able to be applied to the rest of the cities.##
 
 
 
-Now run prop.test for each of the cities in your dataset, and extract both the proportion of unsolved homicides and the confidence interval for each. Do this within a “tidy” pipeline, making use of purrr::map, purrr::map2, list columns and unnest as necessary to create a tidy dataframe with estimated proportions and CIs for each city.
 
 ```{r}
 
@@ -112,7 +112,8 @@ cities_results
 
 ```
 
-Create a plot that shows the estimates and CIs for each city – check out geom_errorbar for a way to add error bars based on the upper and lower limits. Organize cities according to the proportion of unsolved homicides
+##I successfully ran the proptest function with the baltimore dataset. Subsequently, I used the map function to apply the 'prop.test' function to the larger cities_unsolved dataset, using the broom::tidy to create a tidy dataframe. Subsequently, I unnested the dataset and then selected the same 3 variables again to generate a dataframe of estimated proportions and CIs for each city. ##
+
 
 ```{r}
 cities_results %>%
@@ -124,6 +125,9 @@ cities_results %>%
     geom_errorbar(aes(ymin = conf_low, ymax = conf_high)) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
+
+##Using the results from the tidy dataframe above, I plotted the each city in descending order of estimates using ggplot. The confidence intervals are demonstrated with ymin as conf_low and ymax as conf_high illustrated with error bars. The fct_reorder function was used to organize the cities in this descending order.##
+
 
 
 ##PROBLEM 3 
@@ -137,7 +141,15 @@ Fix σ=5
 Set μ=0. Generate 5000 datasets from the model
 
 
+##Here we create a function within a function. The function on the top is the t-test function that we will feed in the dataframe into. Below we create a generate results function that applies the t test to a generated dataset with a for loop. 
 
+Below the t test function we generate the dataset by establishing the mu of 0, standard deviation of 5, iterations of 5000, and observations of 30 per dataset. We create a for loop to be able to run this 5000 times and generate a new list with this. 
+
+Next, we create a tibble which pulls on the prior data and applies the t-test function. This data is unnested. Subsequently the estimate/proportions and p-values are pulled out. This tibble is piped into the final tibble which gives summary statistics that shows whether or not the null was rejected with a p-value of <0.05 demonstrated with the rej variable. From this the proportion of times 'rej' was rejected is created and the average mu hat is created with the average of the proportions. 
+
+Finally, we a tibble of mus 0 to 6 and run the map function to apply the entire generate_results function to so that a new tibble can be made with the summary statistics of all the 7 different mus. 
+
+Additionally, a rejected only group was made by filtering out only the values for which the null hypothesis was rejected. 
 ```{r}
 
 t_test_clean = function(df){
@@ -184,7 +196,7 @@ fin_tib = stats_tib %>%
     rej = p_value < 0.05
   ) %>%
   summarize(
-    rej = rej,
+    rej_value = rej,
     tot = n(),
     tot_rej = sum(rej),
     prop_rej = tot_rej/tot,
@@ -192,7 +204,6 @@ fin_tib = stats_tib %>%
   ) %>%
 return(fin_tib)
 }
-
 
 
 new_tib = 
@@ -203,7 +214,14 @@ new_tib =
     results = map(.x = mu, ~generate_results(mu = .x))) %>%
       unnest(results)
 
+rejected_only = 
+  new_tib %>%
+  filter(rej_value == "TRUE")
+  
+
 ```
+
+
 
 
 x∼Normal[μ,σ]
@@ -214,38 +232,30 @@ Repeat the above for μ={1,2,3,4,5,6}, and complete the following:
 
 
 
-Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of μ on the x axis. Describe the association between effect size and power.
-
-```{r}
-new_tib %>%
-  ggplot(aes(x = mu, y = prop_rej)) + 
-  geom_point(aes(color = mu))
-
-```
-
+Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of μ on the x axis. Describe the association between effect size and power. 
 
 Make a plot showing the average estimate of μ̂  on the y axis and the true value of μ on the x axis.
-
-
-```{r}
-all_mus = new_tib %>%
-  ggplot(aes(x = mu, y = avg_mu_hat)) +
-  geom_point(aes(color = mu))
-
-only_rejected = new_tib %>%
-  filter(rej == "TRUE", na.rm = TRUE)
-
-only_rejected %>% 
-  ggplot(aes(x = mu, y = avg_mu_hat)) +
-  geom_point()
-
-
-```
 
 Make a second plot (or overlay on the first) the average estimate of μ̂  only in samples for which the null was rejected on the y axis and the true value of μ on the x axis. Is the sample average of μ̂  across tests for which the null is rejected approximately equal to the true value of μ? Why or why not?
 
 
+```{r}
 
+new_tib %>%
+  ggplot(aes(x = mu, y = prop_rej)) + 
+  geom_point(aes(color = mu))
+
+
+new_tib %>%
+  ggplot(aes(x = mu, y = avg_mu_hat)) +
+  geom_point(aes(color = mu)) 
+  
+rejected_only %>%
+  ggplot(aes(x = mu, y = avg_mu_hat)) +
+  geom_point(aes(color = mu)) 
+
+
+```
 
 
 
