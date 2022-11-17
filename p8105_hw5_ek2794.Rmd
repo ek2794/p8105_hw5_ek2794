@@ -41,32 +41,19 @@ To test out the prop.test function, I created a separate baltimore function by f
 ```{r}
 website = ("https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv")
 
-crimes_df = read_csv(website) %>%
+unsolved_crimes = read_csv(website) %>%
   janitor::clean_names() %>%
-  mutate(
-  city_state = paste(city, state, sep = "_")
-)
-
-crimes_totalcrimes = crimes_df %>%
-  group_by(city_state) %>%
-  summarize(n_obs = n())
-  
-crimes_unsolved_categories = crimes_df %>%
-  group_by(disposition, city_state) %>% 
-  summarize(n_obs = n()) %>%
-  pivot_wider(
-    names_from = "disposition",
-    values_from = "n_obs") %>%
-  select("city_state", "Closed without arrest", "Open/No arrest")
-  
-unsolved_sum = 
-  rowSums(crimes_unsolved_categories[,c("Closed without arrest", "Open/No arrest")], na.rm = TRUE) 
-
-crimes_unsolved_total = cbind(crimes_totalcrimes, unsolved_sum) 
-crimes_unsolved = crimes_unsolved_total[, c(1, 3, 2)]
-  
-baltimore = crimes_unsolved %>%
-  filter(city_state == "Baltimore_MD")
+unite(city_state, c(city, state), sep = ", ") %>%
+    mutate(
+      city_state = case_when(city_state=="Tulsa, AL" ~ "Tulsa, OK", TRUE~city_state)
+    ) %>%
+    group_by(city_state) %>%
+    summarize(
+      unsolved = sum(disposition == "Closed by arrest" | disposition == "Open/No arrest"),
+      total = n())
+      
+baltimore = unsolved_crimes %>%
+filter(city_state == "Baltimore, MD")
 
 ```
 
@@ -75,9 +62,9 @@ baltimore = crimes_unsolved %>%
 
 ```{r}
 
-proptest = function(unsolved_sum, n_obs) {
+proptest = function(unsolved, total) {
 
-    prop.test(unsolved_sum, n_obs, p = 0.5, alternative = "two.sided") %>%
+    prop.test(unsolved, total, p = 0.5, alternative = "two.sided") %>%
     broom::tidy() %>%
     select(estimate, conf.low, conf.high)
 }
@@ -92,14 +79,14 @@ proptest = function(unsolved_sum, n_obs) {
 
 baltimore_results = 
   proptest(
-    pull(baltimore, unsolved_sum), 
-    pull(baltimore, n_obs)) 
+    pull(baltimore, unsolved), 
+    pull(baltimore, total)) 
 
 
 cities_results =
-  crimes_unsolved %>%
+  unsolved_crimes %>%
   mutate(
-  prop_data = map2(unsolved_sum, n_obs, ~prop.test(.x, .y) %>%
+  prop_data = map2(unsolved, total, ~prop.test(.x, .y) %>%
     broom::tidy())
 ) %>%
   unnest(prop_data) %>%
