@@ -33,9 +33,9 @@ scale_fill_discrete = scale_fill_viridis_d
 
 
 ```
-## Here I downloaded the dataset from Github. I created a separated city_state variable to identify each individual city, which led us to 51 unique cities. The homicides are divided into Closed by arrest which are the closed cases and the unsolved_sum which are the sum of "Closed without arrest" or "Open/No arrest". n_obs represents the total number of homicides observed in the city_state.
+## Here I downloaded the dataset from Github. I created a separated city_state variable to identify each individual city/ There was a Tulsa, AL written accidentally, which should have been OK as the state so this was mutated with the 'case_when' funciton, which led us to have 50 unique cities. Then we grouped by each city/state and made a group of the unsolved cases which comprise of 'Closed by arrest' and 'Open/No arrest'  and a total number of homicides group. 
 
-To test out the prop.test function, I created a separate baltimore function by filtering out just Baltimore from the crimes_unsolved dataset.##
+I created a separate baltimore dataset by filtering out Baltimore, MD from the prior dataset.
 
 
 ```{r}
@@ -43,17 +43,16 @@ website = ("https://raw.githubusercontent.com/washingtonpost/data-homicides/mast
 
 unsolved_crimes = read_csv(website) %>%
   janitor::clean_names() %>%
-unite(city_state, c(city, state), sep = ", ") %>%
+  unite(city_state, c(city, state), sep = ", ") %>%
     mutate(
-      city_state = case_when(city_state=="Tulsa, AL" ~ "Tulsa, OK", TRUE~city_state)
-    ) %>%
+      city_state = case_when(city_state == "Tulsa, AL" ~ "Tulsa, OK", TRUE~city_state)) %>%
     group_by(city_state) %>%
     summarize(
       unsolved = sum(disposition == "Closed by arrest" | disposition == "Open/No arrest"),
       total = n())
       
 baltimore = unsolved_crimes %>%
-filter(city_state == "Baltimore, MD")
+  filter(city_state == "Baltimore, MD")
 
 ```
 
@@ -72,7 +71,7 @@ proptest = function(unsolved, total) {
 ```
 
 
-##I successfully ran the proptest function with the baltimore dataset. Subsequently, I used the map function to apply the 'prop.test' function to the larger cities_unsolved dataset, and used the broom::tidy to create a tidy dataframe. Subsequently, I unnested the dataset and then selected the same 3 variables again to generate a dataframe of estimated proportions and CIs for each city. ##
+##I successfully ran the proptest function with the baltimore dataset. Subsequently, I used the map function to apply the 'prop.test' function to the larger unsolved_crimes dataset, and used the broom::tidy to create a tidy dataframe. Subsequently, I unnested the dataset and then selected the same 3 variables again to generate a dataframe of estimated proportions and CIs for each city. ##
 
 
 ```{r}
@@ -99,6 +98,7 @@ cities_results
 
 ```
 
+##Using the results from the tidy dataframe above, I plotted the each city in descending order of estimates using ggplot. The confidence intervals are demonstrated with ymin as conf_low and ymax as conf_high illustrated with error bars. The fct_reorder function was used to organize the cities in this descending order.##
 
 ```{r}
 cities_results %>%
@@ -111,30 +111,20 @@ cities_results %>%
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
-##Using the results from the tidy dataframe above, I plotted the each city in descending order of estimates using ggplot. The confidence intervals are demonstrated with ymin as conf_low and ymax as conf_high illustrated with error bars. The fct_reorder function was used to organize the cities in this descending order.##
-
 
 
 ##PROBLEM 3 
 
-When designing an experiment or analysis, a common question is whether it is likely that a true effect will be detected – put differently, whether a false null hypothesis will be rejected. The probability that a false null hypothesis is rejected is referred to as power, and it depends on several factors, including: the sample size; the effect size; and the error variance. In this problem, you will conduct a simulation to explore power in a one-sample t-test.
 
-First set the following design elements:
-
-Fix n=30
-Fix σ=5
-Set μ=0. Generate 5000 datasets from the model
-
-
-##Here we create a function within a function. The function on the top is the t-test function that we will feed in the dataframe into. Below we create a generate results function that applies the t test to a generated dataset with a for loop. 
+##Here we create a function within a function. The function on the top is the t-test function that we will feed the dataframe into. Below we create a 'generate_results' function that applies the t test to a generated dataset with a for loop. 
 
 Below the t test function we generate the dataset by establishing the mu of 0, standard deviation of 5, iterations of 5000, and observations of 30 per dataset. We create a for loop to be able to run this 5000 times and generate a new list with this. 
 
-Next, we create a tibble which pulls on the prior data and applies the t-test function. This data is unnested. Subsequently the estimate/proportions and p-values are pulled out. This tibble is piped into the final tibble which gives summary statistics that shows whether or not the null was rejected with a p-value of <0.05 demonstrated with the rej variable. From this the proportion of times 'rej' was rejected is created and the average mu hat is created with the average of the proportions. 
+Next, we create a tibble which pulls out the prior data and applies the t-test function. This data is unnested. Subsequently the estimate/proportions and p-values are pulled out. This tibble is piped into the final tibble which gives summary statistics that shows whether or not the null was rejected with a p-value of <0.05 demonstrated with the rej variable. From this the proportion of times the null hypothesis was rejected is created and the average mu hat is created with the average of the proportions. 
 
-Finally, we a tibble of mus 0 to 6 and run the map function to apply the entire generate_results function to so that a new tibble can be made with the summary statistics of all the 7 different mus. 
+Finally, we made a tibble of mus 0 to 6 and ran the map function to apply the entire generate_results function  so that a new tibble could be made with the summary statistics of all the 7 different mus. 
 
-Additionally, a rejected only group was made by filtering out only the values for which the null hypothesis was rejected. 
+ 
 ```{r}
 
 t_test_clean = function(df){
@@ -150,7 +140,7 @@ t_test_clean = function(df){
 
 generate_results = function(mu = 0, 
                             sigma = 5, 
-                            n_iter = 50, 
+                            n_iter = 5000, 
                             n_obs = 30){
 
 new_list = list()
@@ -205,22 +195,7 @@ new_tib =
 ```
 
 
-
-
-x∼Normal[μ,σ]
-
-For each dataset, save μ̂  and the p-value arising from a test of H:μ=0 using α=0.05. Hint: to obtain the estimate and p-value, use broom::tidy to clean the output of t.test.
-
-Repeat the above for μ={1,2,3,4,5,6}, and complete the following:
-
-
-
-Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of μ on the x axis. Describe the association between effect size and power. 
-
-Make a plot showing the average estimate of μ̂  on the y axis and the true value of μ on the x axis.
-
-Make a second plot (or overlay on the first) the average estimate of μ̂  only in samples for which the null was rejected on the y axis and the true value of μ on the x axis. Is the sample average of μ̂  across tests for which the null is rejected approximately equal to the true value of μ? Why or why not?
-
+##Below we ran the same functions and for loop however added an additional step of filtering out only data that were rejected. We created a ggplot that demonstrates the estimate of m-hat with the different mu values. ##
 
 
 
@@ -301,6 +276,7 @@ rejectedonly = new_tib2 %>%
   
 ```
 
+##Below we create another ggplot for the original dataset showing the estimate of mu hats with the different mus. Using patchwork, these graphs are displayed side by side.##
 
 ```{r}
 
