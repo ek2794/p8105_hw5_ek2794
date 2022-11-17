@@ -85,7 +85,7 @@ proptest = function(unsolved_sum, n_obs) {
 ```
 
 
-##I successfully ran the proptest function with the baltimore dataset. Subsequently, I used the map function to apply the 'prop.test' function to the larger cities_unsolved dataset, using the broom::tidy to create a tidy dataframe. Subsequently, I unnested the dataset and then selected the same 3 variables again to generate a dataframe of estimated proportions and CIs for each city. ##
+##I successfully ran the proptest function with the baltimore dataset. Subsequently, I used the map function to apply the 'prop.test' function to the larger cities_unsolved dataset, and used the broom::tidy to create a tidy dataframe. Subsequently, I unnested the dataset and then selected the same 3 variables again to generate a dataframe of estimated proportions and CIs for each city. ##
 
 
 ```{r}
@@ -282,7 +282,7 @@ fin_tib2 = stats_tib2 %>%
   mutate(
     rej = p_value < 0.05
   ) %>%
-  filter(p_value <0.05) %>%
+  filter(p_value < 0.05) %>%
   summarize(
     tot = n(),
     tot_rej = sum(rej),
@@ -306,7 +306,10 @@ new_tib2 =
 
 rejectedonly = new_tib2 %>%
   ggplot(aes(x = mu, y = avg_mu_hat)) +
-  geom_point(aes(color = mu)) 
+  geom_point(aes(color = mu)) +
+  labs(x = "Mu", y = "Estimate of Mu-hat") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    ggtitle("Mu-hat at Mu for Rejected Cases")
   
   
 ```
@@ -314,15 +317,12 @@ rejectedonly = new_tib2 %>%
 
 ```{r}
 
-
-new_tib %>%
-  ggplot(aes(x = mu, y = prop_rej)) + 
-  geom_point(aes(color = mu))
-
-
 all = new_tib %>%
   ggplot(aes(x = mu, y = avg_mu_hat)) +
-  geom_point(aes(color = mu)) 
+  geom_point(aes(color = mu)) +
+  labs(x = "Mu", y = "Estimate of Mu-hat") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    ggtitle("Mu-hat at Mu for All Cases")
   
 all + rejectedonly
 ```
